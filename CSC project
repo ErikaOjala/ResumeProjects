@@ -1,5 +1,5 @@
-#this code was written for use with Unix based terminal
-#please note that this is not the entire code but snippets used for documentation
+#this code is based on Data Carpentry workshop with Unix based terminal
+#please note that this is not the entire code but snippets used for documentation during coursework
 #username and some directories have been anonymized
 
 #used with CSC Puhti for HPC environment data wrangling and processing
@@ -91,4 +91,27 @@ cd ~/dc_workshop/data/untrimmed_fastq
 mkdir ../trimmed_fastq
 mv *.trim* ../trimmed_fastq
 cd ../trimmed_fastq
+ls
 
+#aligning the genome
+#create new forlder with mkdir and download reference genome with curl
+#unzip using gunzip and check content with head
+head data/ref_genome/ecoli_rel606.fasta
+#before running alignment make a directory for results
+mkdir -p results/sam results/bam results/bcf results/vcf
+#indexing ref genome
+bwa index data/ref_genome/ecoli_rel606.fasta
+bwa mem data/ref_genome/ecoli_rel606.fasta data/trimmed_fastq_small/SRR2589044_1.trim.sub.fastq \
+data/trimmed_fastq_small/SRR2589044_2.trim.sub.fastq > results/sam/SRR2589044.aligned.sam
+samtools view -S -b results/sam/SRR2589044.aligned.sam > results/bam/SRR2589044.aligned.bam
+samtools sort -o results/bam/SRR2589044.aligned.sorted.bam
+samtools flagstat results/bam/SRR2589044.aligned.sorted.bam
+
+#variant calling against ref genome
+bcftools mpileup -O b -o results/bcf/SRR2589044_raw.bcf \
+-f data/ref_genome/ecoli_rel606.fasta results/bam/SRR2589044.aligned.sorted.bam 
+bcftools call --ploidy 1 -m -v -o results/vcf/SRR2589044_variants.vcf results/bcf/SRR2589044_raw.bcf
+vcfutils.pl varFilter results/vcf/SRR2589044_variants.vcf  > results/vcf/SRR2589044_final_variants.vcf
+less -S results/vcf/SRR2589044_final_variants.vcf
+#finally check the data with IGV
+#to do that download .vcf files using scp to your desktop
