@@ -1,0 +1,1410 @@
+#Code used for thesis "DNA:n saannon optimointi ammuttujen messinkihylsyjen pinnalta"
+#author Erika Ojala
+#2024
+
+#note that some sensitive information has been retracted
+#to use this code some manual editing is required
+
+
+
+
+
+#required packages
+install.packages("rmarkdown")
+install.packages("tidyverse")
+devtools::install_github('cran/ggplot2') 
+
+install.packages("ggpubr")
+install.packages("rstatix")
+install.packages("tidystats") #tidystats was archived from cran on 09/23 so manual installation is required
+install.packages("broom")
+install.packages("AICcmodavg")
+install.packages("janitor")
+
+install.packages("reshape2") 
+install.packages("reshape") 
+
+
+
+install.packages("gmodels", dependencies = TRUE)
+install.packages("car", dependencies = TRUE)
+install.packages("DescTools", dependencies = TRUE)
+install.packages("qqplotr", dependencies = TRUE)
+install.packages("dplyr", dependencies = TRUE)
+install.packages("rmarkdown")
+install.packages('fmsb')
+install.packages("broom.mixed")
+
+install.packages("arm")
+install.packages("interactions")
+install.packages("jtools")
+install.packages("ggstance")
+install.packages("scales")
+install.packages("EMT")
+install.packages("pairwiseCI")
+install.packages("boot")
+install.packages("pscl")
+install.packages("DescTools")
+
+
+#load libraries
+library(jtools)
+library(arm)
+library(interactions)
+library(broom.mixed)
+library("rmarkdown")
+library("tidyverse")
+library("ggplot2")
+library("ggpubr")
+library("rstatix")
+library("tidystats")
+library("janitor")
+
+library("gmodels")
+library("car")
+library("DescTools")
+library("qqplotr")
+library("dplyr")
+library("broom")
+library("AICcmodavg")
+
+library(reshape2) 
+library(reshape) 
+library(rmarkdown)
+library(corrplot)
+library("gplots")
+library('fmsb')
+library('DescTools')
+
+
+
+options(OutDec=",")
+options(max.print=10000)
+options(scipen=999)
+
+#set working directory to where you saved the file structure
+setwd("C:/path/to/file")
+
+#next we import quantitative analysis results to Rstudio and give them names
+
+###########
+BT_mix_copan_EZ1_quantitative_results <- read_delim("raw_data/BT_mix_copan_EZ1_quantitative_results.csv", delim = "\t", locale = locale(decimal_mark = ",")) #read the quantitative results output into usable data, delimiter = tab
+
+BT_mix_copan_CWD_quantitative_results <- read_delim("raw_data/BT_mix_copan_CWD_quantitative_results.csv", delim = "\t", locale = locale(decimal_mark = ",")) #read the quantitative results output into usable data, delimiter = tab
+
+NaCl_copan_CWD_quantitative_results <- read_delim("raw_data/NaCl_copan_CWD_quantitative_results.csv", delim = "\t", locale = locale(decimal_mark = ",")) #read the quantitative results output into usable data, delimiter = tab
+
+NaCl_copan_EZ1_quantitative_results <- read_delim("raw_data/NaCl_copan_EZ1_quantitative_results.csv", delim = "\t", locale = locale(decimal_mark = ",")) #read the quantitative results output into usable data, delimiter = tab
+
+PCR_H2O_Cotton_Swab_CWD_quantitative_results <- read_delim("raw_data/PCR_H2O_Cotton_Swab_CWD_quantitative_results.csv", delim = "\t", locale = locale(decimal_mark = ",")) #read the quantitative results output into usable data, delimiter = tab
+
+PCR_H2O_Cotton_Swab_EZ1_quantitative_results <- read_delim("raw_data/PCR_H2O_Cotton_Swab_EZ1_quantitative_results.csv", delim = "\t", locale = locale(decimal_mark = ",")) #read the quantitative results output into usable data, delimiter = tab
+
+
+#plot the imported results for normality
+ggqqplot(BT_mix_copan_EZ1_quantitative_results$Quantitative_result)
+ggsave("documentation/plots/normality_BT_mix_copan_EZ1.png",
+       width = 12,
+       height = 12,
+       dpi = 150)
+
+
+ggqqplot(BT_mix_copan_CWD_quantitative_results$Quantitative_result)
+ggsave("documentation/plots/normality_BT_mix_copan_CWD.png",
+       width = 12,
+       height = 12,
+       dpi = 150)
+
+ggqqplot(NaCl_copan_CWD_quantitative_results$Quantitative_result)
+ggsave("documentation/plots/normality_NaCl_copan_CWD.png",
+       width = 12,
+       height = 12,
+       dpi = 150)
+
+ggqqplot(NaCl_copan_EZ1_quantitative_results$Quantitative_result)
+ggsave("documentation/plots/normality_NaCl_copan_EZ1.png",
+       width = 12,
+       height = 12,
+       dpi = 150)
+
+ggqqplot(PCR_H2O_Cotton_Swab_CWD_quantitative_results$Quantitative_result)
+ggsave("documentation/plots/normality_PCR_H2O_Cotton_Swab_CWD.png",
+       width = 12,
+       height = 12,
+       dpi = 150)
+
+ggqqplot(PCR_H2O_Cotton_Swab_EZ1_quantitative_results$Quantitative_result)
+ggsave("documentation/plots/normality_PCR_H2O_Cotton_Swab_EZ1.png",
+       width = 12,
+       height = 12,
+       dpi = 150)
+
+
+class(BT_mix_copan_EZ1_quantitative_results$Quantitative_result) #checking that results are numeric
+
+######################################
+
+#create comparison files
+
+BT_master <- full_join(BT_mix_copan_CWD_quantitative_results, BT_mix_copan_EZ1_quantitative_results)
+NaCl_master <- full_join(NaCl_copan_CWD_quantitative_results, NaCl_copan_EZ1_quantitative_results)
+Cotton_master <- full_join(PCR_H2O_Cotton_Swab_CWD_quantitative_results, PCR_H2O_Cotton_Swab_EZ1_quantitative_results)
+
+#next we create a master file for all the above results
+
+quantitative_master_file <- full_join(BT_mix_copan_EZ1_quantitative_results, BT_mix_copan_CWD_quantitative_results)
+quantitative_master_file <- full_join(quantitative_master_file, NaCl_copan_CWD_quantitative_results)
+quantitative_master_file <- full_join(quantitative_master_file, NaCl_copan_EZ1_quantitative_results)
+quantitative_master_file <- full_join(quantitative_master_file, PCR_H2O_Cotton_Swab_CWD_quantitative_results)
+quantitative_master_file <- full_join(quantitative_master_file, PCR_H2O_Cotton_Swab_EZ1_quantitative_results)
+
+
+
+#combine material and type as new column
+
+quantitative_master_file <- quantitative_master_file %>% 
+  unite('Sampling', Type, Material, remove = FALSE )
+
+
+
+#removed samples xxxxxxxxxxxxx, codes for samples retracted here, replace with your own respective codes
+quantitative_master_file <- quantitative_master_file[- grep("xxxxxxxxxxxxx", quantitative_master_file$Sample),] #contamination
+quantitative_master_file <- quantitative_master_file[- grep("xxxxxxxxxxxxx", quantitative_master_file$Sample),] #contamination
+quantitative_master_file <- quantitative_master_file[- grep("xxxxxxxxxxxxx", quantitative_master_file$Sample),] #contamination
+quantitative_master_file <- quantitative_master_file[- grep("xxxxxxxxxxxxx", quantitative_master_file$Sample),] #contamination
+
+
+
+#next we create our first point plot to get rough idea of distribution of results
+ggplot(quantitative_master_file, aes(x = Material, y = Quantitative_result)) +
+    geom_jitter(aes(colour = Type)) +
+    facet_grid(rows = vars(Extraction_Method))
+ggsave("documentation/plots/quantitative_results_divided.png",
+       width = 18,
+       height = 12,
+       dpi = 150)
+  
+################################################################
+
+#next we start statistical testing
+#starting with normality test
+class(quantitative_master_file$Quantitative_result) #test the class of column
+
+#save plot for normality of all samples
+ggqqplot(quantitative_master_file$Quantitative_result)
+ggsave("documentation/plots/normality.png",
+       width = 12,
+       height = 12,
+       dpi = 150)
+  
+
+#shapiro test for normality
+shapiro.test(quantitative_master_file$Quantitative_result)
+
+
+#no normality, testing for logarithmic transformation of results
+quantitative_master_file_log <- quantitative_master_file
+
+quantitative_master_file_log$Quantitative_result_log <- log(quantitative_master_file_log$Quantitative_result)
+
+ggqqplot(quantitative_master_file_log$Quantitative_result_log)
+ggsave("documentation/plots/normality_log.png",
+       width = 12,
+       height = 12,
+       dpi = 150)
+
+class(quantitative_master_file_log$Quantitative_result_log) #test the class of column
+
+#test for homogeneity of variables
+leveneTest(Quantitative_result ~ Extraction_Method*Sampling, data=quantitative_master_file)
+
+
+
+quantitative_master_file_log[sapply(quantitative_master_file_log, is.infinite)] <- NA
+
+quantitative_master_file_log <- na.omit(quantitative_master_file_log)
+
+shapiro.test(quantitative_master_file_log$Quantitative_result_log)
+leveneTest(Quantitative_result_log ~ Extraction_Method*Sampling, data=quantitative_master_file_log)
+
+
+#continuing with WMW-test since we saw no normality or homogeneity of variables
+#logarithmic transformation did not improve normality so we discard that
+
+#we create a list for saving wilcox results
+
+results <- list()
+
+#pairwise WMW
+wilcox_two_tail_quants_sampling <- pairwise.wilcox.test(quantitative_master_file$Quantitative_result, quantitative_master_file$Sampling,
+                                               p.adjust.method = "BH", exact = FALSE)
+wilcox_two_tail_quants_sampling
+
+#creating another column for Sampling and Extraction_Method combined for pairwise testing called Method
+
+quantitative_master_file <- quantitative_master_file %>% 
+  unite('Method', Sampling, Extraction_Method, remove = FALSE )
+
+
+
+
+
+
+
+
+############################################################################
+
+#we output our master file that we created
+#for quantitative results, remember to pick write_csv2 since we used comma as decimal
+write_csv2(quantitative_master_file,"Rstudio_outputs\\quantitative_results.csv")
+
+#set theme for additional plots
+theme_set(theme_gray(base_size = 16))
+
+
+#find mean, min, max, median and sd for quantitative results
+
+group_types <- group_by(quantitative_master_file, Method) %>%
+  summarise(
+    count = n(),
+    mean = mean(Quantitative_result, na.rm = TRUE),
+    median = median(Quantitative_result, na.rm = TRUE),
+    sd = sd(Quantitative_result, na.rm = TRUE),
+    min = min(Quantitative_result, na.rm = TRUE),
+    max = max(Quantitative_result, na.rm = TRUE)
+  )
+
+#create copy of master file for confidence interval testing
+quantitative_ci <- quantitative_master_file %>% 
+  unite('Method', Extraction_Method, Sampling, remove = FALSE )
+
+#rename the Sampling methods so they are uniform across all tests
+quantitative_ci$Sampling[quantitative_ci$Sampling=="PCR_H2O_Cotton_swab_CS"] <- "Cotton_Swab_H2O"
+quantitative_ci$Sampling[quantitative_ci$Sampling=="NaCl_0,9%_Copan"] <- "NaCl_Copan"
+quantitative_ci$Sampling[quantitative_ci$Sampling=="BT-mix_Copan"] <- "BT_Mix_Copan"
+quantitative_ci <- quantitative_ci %>% 
+  unite('Method', Extraction_Method, Sampling, remove = FALSE )
+
+#find mean, median, sd, min, max, upper ci and lower ci for quantitative results with variable Method
+#note lower_manual and upper_manual are the ones we will use
+#lower_median_CI and upper_median_CI only for testing purposes
+quant_summary <- group_by(quantitative_ci, Method) %>%
+  summarise(
+    count = n(),
+    mean = mean(Quantitative_result, na.rm = TRUE),
+    median = median(Quantitative_result, na.rm = TRUE),
+    sd = sd(Quantitative_result, na.rm = TRUE),
+    min = min(Quantitative_result, na.rm = TRUE),
+    max = max(Quantitative_result, na.rm = TRUE),
+    lower_median_CI = MedianCI(Quantitative_result, conf.level = 0.95)[2],
+    upper_median_CI = MedianCI(Quantitative_result, conf.level = 0.95)[3]) %>% 
+  mutate(se = sd / sqrt(count),
+           EBM = 1.96*(sd/sqrt(count)),
+           lower_manual = mean - EBM,
+           upper_manual = mean + EBM)
+
+#same but only for Sampling methods
+quant_summary_sampling <- group_by(quantitative_ci, Sampling) %>%
+  summarise(
+    count = n(),
+    mean = mean(Quantitative_result, na.rm = TRUE),
+    median = median(Quantitative_result, na.rm = TRUE),
+    sd = sd(Quantitative_result, na.rm = TRUE),
+    min = min(Quantitative_result, na.rm = TRUE),
+    max = max(Quantitative_result, na.rm = TRUE),
+    lower_median_CI = MedianCI(Quantitative_result, conf.level = 0.95)[2],
+    upper_median_CI = MedianCI(Quantitative_result, conf.level = 0.95)[3]) %>% 
+  mutate(se = sd / sqrt(count),
+         EBM = 1.96*(sd/sqrt(count)),
+         lower_manual = mean - EBM,
+         upper_manual = mean + EBM)
+
+
+#variable Extraction_Method
+quant_summary_extraction <- group_by(quantitative_ci, Extraction_Method) %>%
+  summarise(
+    count = n(),
+    mean = mean(Quantitative_result, na.rm = TRUE),
+    median = median(Quantitative_result, na.rm = TRUE),
+    sd = sd(Quantitative_result, na.rm = TRUE),
+    min = min(Quantitative_result, na.rm = TRUE),
+    max = max(Quantitative_result, na.rm = TRUE),
+    lower_median_CI = MedianCI(Quantitative_result, conf.level = 0.95)[2],
+    upper_median_CI = MedianCI(Quantitative_result, conf.level = 0.95)[3]) %>% 
+  mutate(se = sd / sqrt(count),
+         EBM = 1.96*(sd/sqrt(count)),
+         lower_manual = mean - EBM,
+         upper_manual = mean + EBM)
+
+
+#round the results
+quant_summary <- quant_summary %>% 
+  mutate(lower_manual = round(lower_manual, 8)) 
+
+#save copy for renaming the Method variable values
+quant_summary_edit <- quant_summary
+
+#rename for uniform values to plotting
+quant_summary_edit$Method[quant_summary_edit$Method == 'EZ1_NaCl_Copan'] <- 'NaCl + genetics, EZ1-eristys'
+quant_summary_edit$Method[quant_summary_edit$Method == 'CWD_NaCl_Copan'] <- 'NaCl + genetics, CWD-eristys'
+quant_summary_edit$Method[quant_summary_edit$Method == 'EZ1_Cotton_Swab_H2O'] <- 'pumpulipuikko + vesi, EZ1-eristys'
+quant_summary_edit$Method[quant_summary_edit$Method == 'CWD_Cotton_Swab_H2O'] <- 'pumpulipuikko + vesi, CWD-eristys'
+quant_summary_edit$Method[quant_summary_edit$Method == 'EZ1_BT_Mix_Copan'] <- 'BTmix + genetics, EZ1-eristys'
+quant_summary_edit$Method[quant_summary_edit$Method == 'CWD_BT_Mix_Copan'] <- 'BTmix + genetics, CWD-eristys'
+
+#plot the confidence intervals
+quant_ci <- ggplot(quant_summary_edit, aes(x=factor(Method, level=c('NaCl + genetics, EZ1-eristys', 'pumpulipuikko + vesi, EZ1-eristys', 'BTmix + genetics, EZ1-eristys', 'NaCl + genetics, CWD-eristys', 'pumpulipuikko + vesi, CWD-eristys', 'BTmix + genetics, CWD-eristys')), y = median)) +
+  geom_crossbar(aes(ymax = upper_manual, ymin = lower_manual, colour = Method, fill = Method, alpha = 10, width = .35), show.legend = FALSE) +
+  geom_errorbar(aes(ymax = upper_manual, ymin = lower_manual, width = 0.3)) +
+  geom_point(size = 2)+
+  theme(axis.text.x = element_text(angle = 50, vjust = 1, hjust = 1))
+
+#save the plot
+quant_ci <- quant_ci + labs(x = "Menetelmä", y = "DNA:n määrä (ng/ul)", title = "Luottamusvälivaihtelut menetelmittäin") + expand_limits(x = 0, y = 0)
+quant_ci <- quant_ci + ylim(0, 0.00165)
+ggsave("documentation/plots/quantitative_ci.png",
+       width = 14,
+       height = 6,
+       dpi = 150)
+
+#reorganize the levels of variable Sampling for uniform plotting
+quantitative_ci <- quantitative_ci %>% 
+  mutate(Sampling =  factor(Sampling, levels = c("BT_Mix_Copan", "Cotton_Swab_H2O", "NaCl_Copan"))) %>%
+  arrange(Sampling) 
+quantitative_ci <- quantitative_ci %>% 
+  mutate(Extraction_Method =  factor(Extraction_Method, levels = c("EZ1", "CWD"))) %>%
+  arrange(Extraction_Method) 
+
+#create copy of confidence intervals
+quantitative_ci2 <- quantitative_ci
+
+#rename the Method variable values
+quantitative_ci2$Method[quantitative_ci2$Method == 'EZ1_NaCl_Copan'] <- 'NaCl + genetics, EZ1-eristys'
+quantitative_ci2$Method[quantitative_ci2$Method == 'CWD_NaCl_Copan'] <- 'NaCl + genetics, CWD-eristys'
+quantitative_ci2$Method[quantitative_ci2$Method == 'EZ1_Cotton_Swab_H2O'] <- 'pumpulipuikko + vesi, EZ1-eristys'
+quantitative_ci2$Method[quantitative_ci2$Method == 'CWD_Cotton_Swab_H2O'] <- 'pumpulipuikko + vesi, CWD-eristys'
+quantitative_ci2$Method[quantitative_ci2$Method == 'EZ1_BT_Mix_Copan'] <- 'BTmix + genetics, EZ1-eristys'
+quantitative_ci2$Method[quantitative_ci2$Method == 'CWD_BT_Mix_Copan'] <- 'BTmix + genetics, CWD-eristys'
+  
+#create a boxplot of quantitative results
+quant_qir <- ggplot(quantitative_ci2, aes(x=factor(Method, level=c('NaCl + genetics, EZ1-eristys', 'pumpulipuikko + vesi, EZ1-eristys', 'BTmix + genetics, EZ1-eristys', 'NaCl + genetics, CWD-eristys', 'pumpulipuikko + vesi, CWD-eristys', 'BTmix + genetics, CWD-eristys')),
+                    y=Quantitative_result, alpha = 10, fill = Method), show.legend = FALSE,
+                    ylab = "Kvantitatiivinen tulos (ng/µl)", xlab = "Menetelmä") + 
+  stat_boxplot(geom ="errorbar", width = 0.5) +
+  geom_boxplot() + 
+  
+  stat_summary(fun.y=mean, geom="point", shape=1, size=2, color="black") +
+
+  theme(legend.position="none")+
+  theme(axis.text.x = element_text(angle = 50, vjust = 1, hjust = 1))
+
+#save the boxplot
+quant_qir <- quant_qir + labs(x = "Menetelmä", y = "DNA:n määrä (ng/ul)", title = "Kvantitatiiviset tulokset menetelmittäin", size=12) + expand_limits(x = 0, y = 0)
+quant_qir <- quant_qir + ylim(0, 0.00165)
+ggsave("documentation/plots/quantitative_groups2.png",
+       width = 14,
+       height = 6,
+       dpi = 150)
+
+#set the theme
+theme_set(theme_gray(base_size=16.65))
+
+#combine the ci plot and quantitative boxplot for single picture
+ggarrange(quant_ci + labs(x = "Menetelmä", y = "DNA:n määrä (ng/ul)")+ theme(axis.title.x = element_text(size = 20))+ theme(axis.title.y = element_text(size = 20)), quant_qir  + labs(x = "Menetelmä", y = "DNA:n määrä (ng/ul)")+ theme(axis.title.x = element_text(size = 20))+ theme(axis.title.y = element_text(size = 20)), 
+          labels = c("a", "b"),
+          font.label = list(size = 20),
+          ncol = 2, nrow = 1)
+#save it
+ggsave("documentation/plots/quants_ci_qir.png",
+       width = 16,
+       height = 9,
+       dpi = 100)
+
+
+
+#turn Sampling to factor
+quantitative_ci$Sampling <- as.factor(quantitative_ci$Sampling)
+quantitative_ci$Extraction_Method <- as.factor(quantitative_ci$Extraction_Method)
+
+#close connections for good measure
+closeAllConnections()
+
+#now run pairwise wilcoxon again with BH correction
+wilcox_two_tail_quants_method <- pairwise_wilcox_test(formula = Quantitative_result ~ Method, data = quantitative_ci, distr = "exact")
+
+#saving output to text format
+sink(file = "Rstudio_outputs/wilcox_two_tail_quants_method.txt")
+wilcox_two_tail_quants_method
+sink(file = NULL)
+
+
+#create tables for wilcox testing
+wilcox_quant_extraction <- coin::wilcox_test(Quantitative_result ~ Extraction_Method, data = quantitative_ci, distribution = "exact")
+
+wilcox_quant_sampling1 <- quantitative_ci %>% 
+  filter(Sampling != "Cotton_Swab_H2O")
+
+wilcox_quant_sampling2 <- quantitative_ci %>% 
+  filter(Sampling != "NaCl_Copan")
+
+wilcox_quant_sampling3 <- quantitative_ci %>% 
+  filter(Sampling != "BT_Mix_Copan")
+
+
+#wilcox testing for quantitative results with variable Sampling
+wilcox_sampling1 <- coin::wilcox_test(Quantitative_result ~ Sampling, data = wilcox_quant_sampling1, distribution = "exact", p.adjust.method = "BH")
+  
+wilcox_sampling2 <- coin::wilcox_test(Quantitative_result ~ Sampling, data = wilcox_quant_sampling2, distribution = "exact", p.adjust.method = "BH")
+  
+wilcox_sampling3 <- coin::wilcox_test(Quantitative_result ~ Sampling, data = wilcox_quant_sampling3, distribution = "exact", p.adjust.method = "BH")
+
+
+
+
+#create boxplot for extraction methods
+ggboxplot(quantitative_master_file, x = "Extraction_Method", y = "Quantitative_result", 
+          color = "Extraction_Method", palette = c("#00AFBB", "#FC4E07"),
+          order = c("EZ1", "CWD"),
+          ylab = "Quantitative_result", xlab = "Extraction_Method", add = "mean_sd", error.plot = "errorbar") 
+ggsave("documentation/plots/quantitative_extractions.png",
+       width = 18,
+       height = 12,
+       dpi = 150)
+
+
+#create boxplot for sampling methods
+ggboxplot(quantitative_master_file, x = "Sampling", y = "Quantitative_result",
+          add = "mean_sd", error.plot = "errorbar") 
+ggsave("documentation/plots/quantitative_boxplot.png",
+       width = 18,
+       height = 12,
+       dpi = 150)
+
+
+
+###################################################
+
+#Levene Test for Method
+leveneTest(Quantitative_result ~ Method, data=quantitative_ci)
+
+#kruskal wallis tests for all variables
+Krus_Wallis_Sampling <- kruskal.test(Quantitative_result ~ Sampling, data = quantitative_master_file)
+Krus_Wallis_Material <- kruskal.test(Quantitative_result ~ Material, data = quantitative_master_file)
+Krus_Wallis_Extraction <- kruskal.test(Quantitative_result ~ Extraction_Method, data = quantitative_master_file)
+Krus_Wallis_Type <- kruskal.test(Quantitative_result ~ Type, data = quantitative_master_file)
+Krus_Wallis_Method <- kruskal.test(Quantitative_result ~ Method, data = quantitative_master_file)
+
+#save results of KW test to list
+results2 <- list()
+
+results2 <- results2 |>
+  add_stats(Krus_Wallis_Type)|>
+  add_stats(Krus_Wallis_Material)|>
+  add_stats(Krus_Wallis_Extraction)|>
+  add_stats(Krus_Wallis_Sampling)|>
+  add_stats(Krus_Wallis_Method)
+
+
+
+
+
+
+###################################################
+#import ABI results, replace xxxxxxxxxxxx with the name of your file
+BT_Mix_EZ1_ABI <- read_delim("xxxxxxxxxxxx.txt", delim = "\t") #read the ABI results output into usable data, delimiter = tab
+
+
+BT_Mix_CWD_ABI <- read_delim("xxxxxxxxxxxx.txt", delim = "\t") 
+NaCl_EZ1_ABI <- read_delim("xxxxxxxxxxxx.txt", delim = "\t") 
+NaCl_CWD_ABI <- read_delim("xxxxxxxxxxxx.txt", delim = "\t") 
+CS_EZ1_ABI <- read_delim("xxxxxxxxxxxx.txt", delim = "\t") 
+CS_CWD_ABI <- read_delim("xxxxxxxxxxxx", delim = "\t") 
+class(BT_Mix_CWD_ABI$`Height 1`) #make sure the class is correct
+
+  
+#calculate the mean value of the allele peak height
+BT_Mix_CWD_ABI <- BT_Mix_CWD_ABI %>% 
+  mutate(height_mean = rowMeans(select(BT_Mix_CWD_ABI, c(23:32)), na.rm=TRUE))
+
+BT_Mix_EZ1_ABI <- BT_Mix_EZ1_ABI %>% 
+  mutate(height_mean = rowMeans(select(BT_Mix_EZ1_ABI, c(23:32)), na.rm=TRUE))
+
+NaCl_EZ1_ABI <- NaCl_EZ1_ABI %>% 
+  mutate(height_mean = rowMeans(select(NaCl_EZ1_ABI, c(23:32)), na.rm=TRUE))
+
+NaCl_CWD_ABI <- NaCl_CWD_ABI %>% 
+  mutate(height_mean = rowMeans(select(NaCl_CWD_ABI, c(23:32)), na.rm=TRUE))
+
+CS_EZ1_ABI <- CS_EZ1_ABI %>% 
+  mutate(height_mean = rowMeans(select(CS_EZ1_ABI, c(23:32)), na.rm=TRUE))
+
+CS_CWD_ABI <- CS_CWD_ABI %>% 
+  mutate(height_mean = rowMeans(select(CS_CWD_ABI, c(23:32)), na.rm=TRUE))
+
+#create copy and add variables
+BT_Mix_CWD_ABI2 <- (BT_Mix_CWD_ABI[1:1088, ]) %>% 
+  mutate(Type = "BT_Mix_CWD", Sampling = "BT_Mix_Copan", Extraction_Method =  "CWD")
+BT_Mix_EZ1_ABI2 <- (BT_Mix_EZ1_ABI[1:1088, ]) %>% 
+  mutate(Type = "BT_Mix_EZ1", Sampling = "BT_Mix_Copan", Extraction_Method =  "EZ1")
+NaCl_CWD_ABI2 <- (NaCl_CWD_ABI[1:1088, ]) %>% 
+  mutate(Type = "NaCl_CWD", Sampling = "NaCl_Copan", Extraction_Method =  "CWD")
+NaCl_EZ1_ABI2 <- (NaCl_EZ1_ABI[1:1088, ]) %>% 
+  mutate(Type = "NaCl_EZ1", Sampling = "NaCl_Copan", Extraction_Method =  "EZ1")
+CS_CWD_ABI2 <- (CS_CWD_ABI[1:1088, ]) %>% 
+  mutate(Type = "Cotton_Swab_CWD", Sampling = "Cotton_Swab_H2O", Extraction_Method =  "CWD")
+CS_EZ1_ABI2 <- (CS_EZ1_ABI[1:1088, ]) %>% 
+  mutate(Type = "Cotton_Swab_EZ1", Sampling = "Cotton_Swab_H2O", Extraction_Method =  "EZ1")
+  CS_EZ1_ABI2$`Allele 2` = as.character(as.numeric(CS_EZ1_ABI2$`Allele 2`))
+  
+#create a master file of results
+ABI_results_master <- full_join(BT_Mix_CWD_ABI2, BT_Mix_EZ1_ABI2)
+ABI_results_master <- full_join(ABI_results_master, NaCl_CWD_ABI2)
+ABI_results_master <- full_join(ABI_results_master, NaCl_EZ1_ABI2)
+ABI_results_master <- full_join(ABI_results_master, CS_CWD_ABI2)
+ABI_results_master <- full_join(ABI_results_master, CS_EZ1_ABI2)
+
+#remove the same samples as earlier
+ABI_old <- ABI_results_master
+ABI_results_master <- ABI_results_master[!grepl("xxxxxxxxxxxxx*", ABI_results_master$`Sample Name`),] #contamination
+ABI_results_master <- ABI_results_master[!grepl("xxxxxxxxxxxxx*", ABI_results_master$`Sample Name`),] #contamination
+ABI_results_master <- ABI_results_master[!grepl("xxxxxxxxxxxxx*", ABI_results_master$`Sample Name`),] #contamination
+ABI_results_master <- ABI_results_master[!grepl("xxxxxxxxxxxxx*", ABI_results_master$`Sample Name`),] #contamination
+
+
+#make NAs to zeros for peak height mean comparison
+ABI_results_master_added_zeros <- ABI_results_master
+
+ABI_results_master_added_zeros["height_mean"][is.na(ABI_results_master_added_zeros["height_mean"])] <- 0
+
+shapiro.test(ABI_results_master$height_mean)
+
+#find the mean values
+ABI_results_master_added_zeros <- ABI_results_master_added_zeros %>% 
+  aggregate(height_mean ~ `Sample Name` + Type + Extraction_Method + Sampling, FUN=mean)
+
+#test for normality of the peak height mean
+shapiro.test(ABI_results_master_added_zeros$height_mean)
+#test homogeneity of variable
+leveneTest(height_mean ~ Type, data=ABI_results_master_added_zeros)
+
+#create three tables for comparison testing
+ABI_height_1 <- ABI_results_master_added_zeros %>% 
+  filter(Sampling != "Cotton_Swab_H2O")
+ABI_height_2 <- ABI_results_master_added_zeros %>% 
+  filter(Sampling != "NaCl_Copan")
+ABI_height_3 <- ABI_results_master_added_zeros %>% 
+  filter(Sampling != "BT_Mix_Copan")
+
+#turn to factor
+ABI_height_1$Sampling <- as.factor(ABI_height_1$Sampling)
+ABI_height_2$Sampling <- as.factor(ABI_height_2$Sampling)
+ABI_height_3$Sampling <- as.factor(ABI_height_3$Sampling)
+
+#WMW test for peak height means
+ABI_WMW_1 <- coin::wilcox_test(height_mean ~ Sampling, ABI_height_1, distribution = "exact")
+ABI_WMW_2 <- coin::wilcox_test(height_mean ~ Sampling, ABI_height_2, distribution = "exact")
+ABI_WMW_3 <- coin::wilcox_test(height_mean ~ Sampling, ABI_height_3, distribution = "exact")
+
+#create table to compare extraction methods
+WMW_extract_data <- ABI_results_master_added_zeros
+#turn to factor
+WMW_extract_data$Extraction_Method <- as.factor(WMW_extract_data$Extraction_Method)
+
+#WMW test for peak height between extraction methods
+ABI_WMW_extraction <- coin::wilcox_test(height_mean ~ Extraction_Method, WMW_extract_data, distribution = "exact")
+
+#KW test for sampling, extraction method and combined
+kruskal.test(height_mean ~ Sampling, data = ABI_results_master_added_zeros)
+kruskal.test(height_mean ~ Extraction_Method, data = ABI_results_master_added_zeros)
+kruskal.test(height_mean ~ Type, data = ABI_results_master_added_zeros)
+
+#create boxplot
+ggboxplot(ABI_results_master, x = "Type", y = "height_mean",  
+          fill = "Extraction_Method",
+          ylab = "RFU Heights mean", xlab = "Type", add = "mean_sd", error.plot = "errorbar") 
+ggsave("documentation/plots/ABI_groups_fixed.png",
+       width = 18,
+       height = 12,
+       dpi = 150)
+
+#with zeros for NAs
+ggboxplot(ABI_results_master_added_zeros, x = "Type", y = "height_mean",  
+          fill = "Type",
+          ylab = "RFU Heights mean", xlab = "Type", add = "mean_sd", error.plot = "errorbar") 
+ggsave("documentation/plots/ABI_groups_zeros.png",
+       width = 18,
+       height = 12,
+       dpi = 150)
+
+#pairwise wilcoxon between methods
+wilcox_rfu_pairwise <- pairwise.wilcox.test(ABI_results_master$height_mean, ABI_results_master$Type,
+                     p.adjust.method = "BH", exact = FALSE, paired = FALSE)
+wilcox_rfu_pairwise
+
+wilcox_rfu_pairwise_zeros <- (pairwise.wilcox.test(ABI_results_master_added_zeros$height_mean, ABI_results_master_added_zeros$Type,
+                                            p.adjust.method = "BH", exact = FALSE, paired = FALSE))
+as.matrix(wilcox_rfu_pairwise_zeros)
+
+
+
+
+###################################################
+
+#mean, sd, min and max for mean peak height
+group_by(ABI_results_master, Sampling, Extraction_Method) %>%
+  summarise(
+    count = n(),
+    mean = mean(height_mean, na.rm = TRUE),
+    sd = sd(height_mean, na.rm = TRUE),
+    min = min(height_mean, na.rm = TRUE),
+    max = max(height_mean, na.rm = TRUE),
+      )
+
+#save KW test results to tables
+kruskal_abi_Sampling <- kruskal.test(height_mean ~ Sampling, data = ABI_results_master)
+
+kruskal_abi_Sampling_zeros <- kruskal.test(height_mean ~ Sampling, data = ABI_results_master_added_zeros)
+
+kruskal_abi_type <- kruskal.test(height_mean ~ Type, data = ABI_results_master)
+
+kruskal_abi_type_zeros <- kruskal.test(height_mean ~ Type, data = ABI_results_master_added_zeros)
+
+kruskal_abi_extraction_method <- kruskal.test(height_mean ~ Extraction_Method, data = ABI_results_master)
+
+kruskal_abi_extraction_method_zeros <- kruskal.test(height_mean ~ Extraction_Method, data = ABI_results_master_added_zeros)
+
+#save KW test results to list
+results2 <- results2 |>
+  add_stats(kruskal_abi_Sampling)|>
+  add_stats(kruskal_abi_Sampling_zeros)|>
+  add_stats(kruskal_abi_type)|>
+  add_stats(kruskal_abi_extraction_method)|>
+  add_stats(kruskal_abi_extraction_method_zeros)
+
+#test homogeneity of variables for results without added zeros and with added zeros
+leveneTest(height_mean ~ Extraction_Method*Sampling, data=ABI_results_master)
+leveneTest(height_mean ~ Extraction_Method*Sampling, data=ABI_results_master_added_zeros)
+
+#try logarithmic transform
+ABI_results_master_log <- ABI_results_master
+
+ABI_results_master_log$height_mean_log <- log(ABI_results_master_log$height_mean)
+
+leveneTest(height_mean_log ~ Extraction_Method*Sampling, data=ABI_results_master_log)
+
+ggqqplot(ABI_results_master_log$height_mean_log)
+shapiro.test(ABI_results_master_log$height_mean_log)
+#no luck, discard
+
+#set directory and write results to .json file
+dir <- "C:\\path\\to\\file\\documentation\\results"
+write_stats(results2, file.path(dir, "results_kruskal.json"))
+
+#join sampling results for testing and run KW test
+BT_Mix_both <- full_join(BT_Mix_CWD_ABI2, BT_Mix_EZ1_ABI2)
+kruskal_BT_mix_abi <- kruskal.test(height_mean ~ Type, data = BT_Mix_both)
+
+NaCl_both <- full_join(NaCl_CWD_ABI2, NaCl_EZ1_ABI2)
+kruskal_NaCl_abi <- kruskal.test(height_mean ~ Type, data = NaCl_both)
+
+CS_both <- full_join(CS_CWD_ABI2, CS_EZ1_ABI2)
+kruskal_CS_abi <- kruskal.test(height_mean ~ Type, data = CS_both)
+
+#save to list
+results2 <- results2 |>
+  add_stats(kruskal_BT_mix_abi)|>
+  add_stats(kruskal_NaCl_abi)|>
+  add_stats(kruskal_CS_abi)
+
+#run normality test for combined tables
+shapiro.test(BT_Mix_both$height_mean)
+shapiro.test(NaCl_both$height_mean)
+shapiro.test(CS_both$height_mean)
+
+#wilcox test
+wilcox.test(height_mean ~ Extraction_Method, data = BT_Mix_both)
+wilcox.test(height_mean ~ Extraction_Method, data = NaCl_both)
+wilcox.test(height_mean ~ Extraction_Method, data = CS_both)
+
+
+#count the marked alleles from samples
+counted_alleles <- ABI_results_master
+table(counted_alleles$`Allele 1`, useNA = "ifany")
+
+tabyl(counted_alleles, `Marker`, `Allele 1`)
+
+
+
+class(counted_alleles$`Allele 1`)
+class(counted_alleles$`Allele 2`)
+class(counted_alleles$`Allele 3`)
+class(counted_alleles$`Allele 4`)
+
+counted_alleles_for_correct_comparison <- ABI_results_master
+table(counted_alleles_for_correct_comparison$`Allele 1`, useNA = "ifany")
+
+counted_alleles_for_correct_comparison <- ABI_results_master %>% 
+  dplyr::select("Allele 1", "Allele 2", "Allele 3", "Allele 4", Marker, "Type", `Sample Name`, Extraction_Method, Sampling) %>% 
+  reshape2::melt(id.var = c('Sample Name', 'Marker', 'Extraction_Method', "Type", 'Sampling'),
+                 variable.name = 'Alleles')
+
+alleles_lotto <- tabyl(counted_alleles_for_correct_comparison, `Marker`, `value`, "Type")
+
+sink(file = "Rstudio_outputs/alleles_marked_for_evaluation.csv")
+tabyl(counted_alleles_for_correct_comparison, `Marker`, `value`, "Type")
+sink(file = NULL)
+
+
+
+
+counted_alleles2 <- counted_alleles %>% 
+  dplyr::select("Allele 1", "Allele 2", "Allele 3", "Allele 4", Marker, Type) %>% 
+  reshape2::melt(id.var = c('Marker', 'Type'),
+                                               variable.name = 'Alleles')
+
+counted_alleles_for_poisson <- counted_alleles %>% 
+  dplyr::select("Allele 1", "Allele 2", "Allele 3", "Allele 4", Marker, Type, Sampling, Extraction_Method, `Sample Name`) %>% 
+  reshape2::melt(id.var = c('Sample Name', 'Marker', 'Type', 'Sampling', 'Extraction_Method'),
+                                               variable.name = 'Alleles')
+
+
+organized_and_counted_alleles2 <- na.omit(counted_alleles2 %>% 
+  count(Marker, value, Type, name = "Instances"))
+
+counted_alleles2 %>% 
+  count(Marker, value, Type, name = "Instances")
+
+#save the counted alleles to text file
+sink(file = "documentation/counted_alleles.csv")
+counted_alleles2 %>% 
+  count(Marker, value, Type, name = "Instances")
+sink(file = NULL)
+
+#same but without NA values
+sink(file = "documentation/counted_alleles_NA_omited.csv")
+na.omit(counted_alleles2 %>% 
+          count(Marker, value, Type, name = "Instances"))
+sink(file = NULL)
+
+
+
+#count based by sample
+counted_alleles_by_sample <- counted_alleles %>% 
+  dplyr::select("Allele 1", "Allele 2", "Allele 3", "Allele 4", Marker, `Sample Name`, Extraction_Method, Sampling) %>% 
+  reshape2::melt(id.var = c('Sample Name', 'Marker', 'Extraction_Method', 'Sampling'),
+                 variable.name = 'Alleles')
+
+#count based by size
+counted_alleles_by_size <- counted_alleles %>% 
+  dplyr::select("Allele 1", "Allele 2", "Allele 3", "Allele 4", Marker, `Sample Name`, Extraction_Method, Sampling, "Size 1", "Size 2", "Size 3", "Size 4") 
+
+counted_alleles_by_size_1 <- counted_alleles_by_size %>% 
+  dplyr::select("Allele 1", "Allele 2", "Allele 3", "Allele 4", Marker, `Sample Name`, Extraction_Method, Sampling) %>% 
+  reshape2::melt(id.var = c('Sample Name', 'Marker', 'Extraction_Method', 'Sampling'),
+    variable.name = 'Alleles')
+                 
+counted_alleles_by_size_2 <- counted_alleles_by_size %>% 
+  dplyr::select("Size 1", "Size 2", "Size 3", "Size 4", Marker, `Sample Name`, Extraction_Method, Sampling) %>% 
+  reshape2::melt(id.var = c('Sample Name', 'Marker', 'Extraction_Method', 'Sampling'),
+    variable.name = 'Size', value.name = "Size_bp")
+  
+#bind to one table
+restructured_counted_by_size = cbind(counted_alleles_by_size_1, counted_alleles_by_size_2)
+
+#omit unnecessary columns
+restructured_counted_by_size <- restructured_counted_by_size %>% 
+  dplyr::select(c(1:6, 11:12)) 
+
+
+#create a copy
+organized_and_counted_alleles_by_sample <- (counted_alleles_by_sample)
+
+organized_and_counted_alleles_by_sample <- organized_and_counted_alleles_by_sample %>%
+  count(`Sample Name`, Extraction_Method, Sampling, is.na(value), name = "Instances")
+
+organized_and_counted_alleles_by_sample$Instances[organized_and_counted_alleles_by_sample$"is.na(value)" == TRUE] <- 0
+
+#create a copy and rename variable to Sample
+organized_and_counted_alleles_by_sample2 <- organized_and_counted_alleles_by_sample %>%
+  mutate(Sample = str_extract(`Sample Name`, "^.{13}"))
+
+marked_count_by_sample <- organized_and_counted_alleles_by_sample2 %>% 
+  aggregate(Instances ~ Sample + Sampling+Extraction_Method, FUN=sum) %>% 
+  unite('Sampling_and_Extraction_Method', Sampling, Extraction_Method, remove = FALSE )
+
+#create boxplot and save
+ggboxplot(marked_count_by_sample, x = "Sampling_and_Extraction_Method", y = "Instances", 
+          fill = "Sampling_and_Extraction_Method",
+          ylab = "Instances", xlab = "Type", add = "mean_sd", error.plot = "errorbar")
+ggsave("documentation/plots/marked_alleles_count.png",
+       width = 18,
+       height = 12,
+       dpi = 150)
+
+#create plot for normality
+ggqqplot(marked_count_by_sample$Instances)
+ggsave("documentation/plots/marked_count_by_sample_normality.png",
+       width = 18,
+       height = 12,
+       dpi = 150)
+
+#find mean, sd, min and max
+group_by(marked_count_by_sample, Sampling, Extraction_Method) %>%
+  summarise(
+    count = n(),
+    mean = mean(Instances, na.rm = TRUE),
+    sd = sd(Instances, na.rm = TRUE),
+    min = min(Instances, na.rm = TRUE),
+    max = max(Instances, na.rm = TRUE),
+  )
+
+#save the values to text file
+sink(file = "documentation/counted_alleles_sd_mean.txt")
+group_by(marked_count_by_sample, Sampling, Extraction_Method) %>%
+  summarise(
+    count = n(),
+    mean = mean(Instances, na.rm = TRUE),
+    sd = sd(Instances, na.rm = TRUE),
+    min = min(Instances, na.rm = TRUE),
+    max = max(Instances, na.rm = TRUE), .groups = 'drop'
+  )
+sink(file = NULL)
+
+#test normality of counted alleles
+shapiro.test(marked_count_by_sample$Instances)
+
+#KW test for counted alleles
+kruskal_counted_combo <- kruskal.test(Instances ~ Sampling_and_Extraction_Method, data = marked_count_by_sample)
+
+kruskal_counted_sampling <- kruskal.test(Instances ~ Sampling, data = marked_count_by_sample)
+
+kruskal_counted_extraction_method <- kruskal.test(Instances ~ Extraction_Method, data = marked_count_by_sample)
+
+#pairwise wilcox for counted alleles
+pairwise_wilcox_counted_combo <- pairwise.wilcox.test(marked_count_by_sample$Instances, marked_count_by_sample$Sampling_and_Extraction_Method,
+                                                     p.adjust.method = "BH", exact = FALSE, paired = FALSE)
+pairwise_wilcox_counted_combo
+
+pairwise_wilcox_counted_sampling <- pairwise.wilcox.test(marked_count_by_sample$Instances, marked_count_by_sample$Sampling,
+                                                     p.adjust.method = "BH", exact = FALSE, paired = FALSE)
+pairwise_wilcox_counted_sampling
+
+pairwise_wilcox_counted_extraction_method <- pairwise.wilcox.test(marked_count_by_sample$Instances, marked_count_by_sample$Extraction_Method,
+                                                     p.adjust.method = "BH", exact = FALSE, paired = FALSE)
+pairwise_wilcox_counted_extraction_method
+
+#save pairwise wilcox results to text file
+sink(file = "documentation/pairwise_alleles_results.txt")
+pairwise_wilcox_counted_combo
+pairwise_wilcox_counted_sampling
+pairwise_wilcox_counted_extraction_method
+sink(file = NULL)
+
+
+#add KW test results to list
+results2 <- results2 |>
+  add_stats(kruskal_counted_combo)|>
+  add_stats(kruskal_counted_sampling)|>
+  add_stats(kruskal_counted_extraction_method)
+
+#create barplot for alleles
+ggbarplot(marked_count_by_sample, x = "Sampling_and_Extraction_Method", y = "Instances",
+          label = F, label.pos = "out", color = "Sampling_and_Extraction_Method", fill = "Sampling_and_Extraction_Method")
+ggsave("documentation/plots/marked_alleles_count_barplots.png",
+       width = 18,
+       height = 12,
+       dpi = 150)
+
+#another that is not filled with colour, save to file
+ggbarplot(marked_count_by_sample, x = "Sampling_and_Extraction_Method", y = "Instances",
+          label = F, label.pos = "out", color = "Sampling_and_Extraction_Method")
+ggsave("documentation/plots/marked_alleles_count_barplots_not_filled.png",
+       width = 18,
+       height = 12,
+       dpi = 150)
+
+#sum the counts by Sampling_and_Extraction_Method
+marked_count_by_sample2 <- marked_count_by_sample %>% 
+  aggregate(Instances ~ Sampling_and_Extraction_Method, FUN=sum)
+
+#test normality
+shapiro.test(marked_count_by_sample2$Instances)
+
+
+
+
+#create a file for counted correct alleles
+machine_count_alleles <- na.omit(counted_alleles2)
+correct_alleles_no_NA_by_sample <- na.omit(counted_alleles_by_sample)
+
+
+machine_count_for_poisson <- na.omit(counted_alleles_for_poisson)
+machine_count_for_poisson <- machine_count_for_poisson %>% 
+  unite(Marker_and_value, Marker, value, remove = FALSE)
+
+machine_count_for_poisson <- machine_count_for_poisson %>% 
+  mutate(Sample = str_extract(`Sample Name`, "^.{13}"))
+
+
+correct_alleles_no_NA_by_sample <- correct_alleles_no_NA_by_sample %>% 
+  unite(Marker_and_value, Marker, value, remove = FALSE )
+
+machine_count_alleles <- machine_count_alleles %>% 
+   unite(Marker_and_value, Marker, value, remove = FALSE )
+
+#create copy
+count_2 <- count(machine_count_alleles, Type, Marker_and_value, Marker)
+
+
+#another copy and specify which values you want RStudio to pick, note replace xx at the end with allele you're trying to cound
+count_3 <- count_2 %>% 
+  filter(count_2$Marker_and_value == 'AMEL_xx' | count_2$Marker_and_value == 'AMEL_xx' | count_2$Marker_and_value == 'D3S1358_xx' | count_2$Marker_and_value == 'D3S1358_xx' | count_2$Marker_and_value == 'TH01_xx' | count_2$Marker_and_value == 'TH01_xx' | count_2$Marker_and_value == 'D21S11_xx' | count_2$Marker_and_value == 'D21S11_xx' | count_2$Marker_and_value == 'D18S51_xx' | count_2$Marker_and_value == 'D18S51_xx'
+         | count_2$Marker_and_value == 'D10S1248_xx' | count_2$Marker_and_value == 'D1S1656_xx' | count_2$Marker_and_value == 'D1S1656_xx' | count_2$Marker_and_value == 'D2S1338_xx' | count_2$Marker_and_value == 'D2S1338_xx' | count_2$Marker_and_value == 'D16S539_xx' | count_2$Marker_and_value == 'D16S539_xx'
+         | count_2$Marker_and_value == 'D22S1045_xx' | count_2$Marker_and_value == 'D22S1045_xx' | count_2$Marker_and_value == 'vWA_xx' | count_2$Marker_and_value == 'vWA_xx' | count_2$Marker_and_value == 'D8S1179_xx' | count_2$Marker_and_value == 'D8S1179_xx' | count_2$Marker_and_value == 'FGA_xx' | count_2$Marker_and_value == 'FGA_xx'
+         | count_2$Marker_and_value == 'D2S441_xx' | count_2$Marker_and_value == 'D2S441_xx' | count_2$Marker_and_value == 'D12S391_xx' | count_2$Marker_and_value == 'D12S391_xx' | count_2$Marker_and_value == 'D19S433_xx' | count_2$Marker_and_value == 'D19S433_xx' | count_2$Marker_and_value == 'SE33_xx' | count_2$Marker_and_value == 'SE33_xx') %>% 
+  aggregate(n ~ Type + Marker, FUN=sum)
+
+correct_alleles_counted <- count_3
+
+#rename Sample Name to Sample
+correct_alleles_no_NA_by_sample <- correct_alleles_no_NA_by_sample %>%
+  mutate(Sample = str_extract(`Sample Name`, "^.{13}"))
+
+#same as before, replace xx with your alleles
+correct_alleles_for_chisq <- correct_alleles_no_NA_by_sample %>% 
+  filter(correct_alleles_no_NA_by_sample$Marker_and_value == 'AMEL_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'AMEL_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D3S1358_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D3S1358_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'TH01_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'TH01_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D21S11_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D21S11_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D18S51_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D18S51_xx'
+         | correct_alleles_no_NA_by_sample$Marker_and_value == 'D10S1248_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D1S1656_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D1S1656_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D2S1338_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D2S1338_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D16S539_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D16S539_xx'
+         | correct_alleles_no_NA_by_sample$Marker_and_value == 'D22S1045_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D22S1045_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'vWA_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'vWA_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D8S1179_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D8S1179_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'FGA_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'FGA_xx'
+         | correct_alleles_no_NA_by_sample$Marker_and_value == 'D2S441_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D2S441_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D12S391_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D12S391_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D19S433_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D19S433_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'SE33_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'SE33_xx') %>% 
+  unite(Type, Extraction_Method, Sampling, remove = FALSE ) %>% 
+  count(Sample, Type, Marker_and_value, Marker, Sampling, Extraction_Method) %>% 
+  aggregate(n ~ Sampling + Extraction_Method, FUN=sum)
+
+#create table for potential chi squared
+all_alleles_for_chisq <- correct_alleles_no_NA_by_sample %>% 
+  unite(Type, Extraction_Method, Sampling, remove = FALSE ) %>% 
+  count(Sample, Type, Marker_and_value, Marker, Sampling, Extraction_Method) %>% 
+  aggregate(n ~ Sampling + Extraction_Method, FUN=sum)
+
+correct_alleles_no_NA_by_sample_for_barplots <- correct_alleles_no_NA_by_sample
+correct_alleles_no_NA_by_sample_for_barplots <- correct_alleles_no_NA_by_sample_for_barplots %>% 
+  filter(correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'AMEL_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'AMEL_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D3S1358_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D3S1358_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'TH01_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'TH01_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D21S11_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D21S11_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D18S51_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D18S51_xx'
+         | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D10S1248_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D1S1656_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D1S1656_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D2S1338_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D2S1338_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D16S539_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D16S539_xx'
+         | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D22S1045_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D22S1045_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'vWA_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'vWA_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D8S1179_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D8S1179_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'FGA_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'FGA_xx'
+         | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D2S441_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D2S441_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D12S391_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D12S391_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D19S433_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'D19S433_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'SE33_xx' | correct_alleles_no_NA_by_sample_for_barplots$Marker_and_value == 'SE33_xx') %>% 
+  unite(Type, Extraction_Method, Sampling, remove = FALSE ) %>% 
+  count(Sample, Type, Marker_and_value, Marker) %>% 
+  aggregate(n ~ Marker + Type, FUN=sum)
+
+
+#rename the markers for making organizing easier
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'AMEL'] <- 'A_[AMEL]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'D3S1358'] <- 'B_[D3S1358]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'TH01'] <- 'C_[TH01]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'D21S11'] <- 'D_[D21S11]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'D18S51'] <- 'E_[D18S51]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'D10S1248'] <- 'F_[D10S1248]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'D1S1656'] <- 'G_[D1S1656]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'D2S1338'] <- 'H_[D2S1338]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'D16S539'] <- 'I_[D16S539]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'D22S1045'] <- 'J_[D22S1045]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'vWA'] <- 'K_[vWA]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'D8S1179'] <- 'L_[D8S1179]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'FGA'] <- 'M_[FGA]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'D2S441'] <- 'N_[D2S441]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'D12S391'] <- 'O_[D12S391]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'D19S433'] <- 'P_[D19S433]'
+correct_alleles_no_NA_by_sample_for_barplots$Marker[correct_alleles_no_NA_by_sample_for_barplots$Marker == 'SE33'] <- 'Q_[SE33]'
+
+
+
+correct_alleles_no_NA_by_sample <- correct_alleles_no_NA_by_sample %>% 
+  filter(correct_alleles_no_NA_by_sample$Marker_and_value == 'AMEL_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'AMEL_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D3S1358_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D3S1358_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'TH01_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'TH01_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D21S11_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D21S11_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D18S51_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D18S51_xx'
+         | correct_alleles_no_NA_by_sample$Marker_and_value == 'D10S1248_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D1S1656_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D1S1656_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D2S1338_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D2S1338_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D16S539_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D16S539_xx'
+         | correct_alleles_no_NA_by_sample$Marker_and_value == 'D22S1045_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D22S1045_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'vWA_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'vWA_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D8S1179_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D8S1179_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'FGA_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'FGA_xx'
+         | correct_alleles_no_NA_by_sample$Marker_and_value == 'D2S441_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D2S441_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D12S391_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D12S391_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D19S433_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'D19S433_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'SE33_xx' | correct_alleles_no_NA_by_sample$Marker_and_value == 'SE33_xx') %>% 
+  unite(Type, Extraction_Method, Sampling, remove = FALSE ) %>% 
+  count(Sample, Type, Marker_and_value, Marker) %>% 
+  aggregate(n ~ Sample + Type, FUN=sum)
+
+
+
+#rename the markers for making organizing easier
+count_3$Marker[count_3$Marker == 'AMEL'] <- 'A_[AMEL]'
+count_3$Marker[count_3$Marker == 'D3S1358'] <- 'B_[D3S1358]'
+count_3$Marker[count_3$Marker == 'TH01'] <- 'C_[TH01]'
+count_3$Marker[count_3$Marker == 'D21S11'] <- 'D_[D21S11]'
+count_3$Marker[count_3$Marker == 'D18S51'] <- 'E_[D18S51]'
+count_3$Marker[count_3$Marker == 'D10S1248'] <- 'F_[D10S1248]'
+count_3$Marker[count_3$Marker == 'D1S1656'] <- 'G_[D1S1656]'
+count_3$Marker[count_3$Marker == 'D2S1338'] <- 'H_[D2S1338]'
+count_3$Marker[count_3$Marker == 'D16S539'] <- 'I_[D16S539]'
+count_3$Marker[count_3$Marker == 'D22S1045'] <- 'J_[D22S1045]'
+count_3$Marker[count_3$Marker == 'vWA'] <- 'K_[vWA]'
+count_3$Marker[count_3$Marker == 'D8S1179'] <- 'L_[D8S1179]'
+count_3$Marker[count_3$Marker == 'FGA'] <- 'M_[FGA]'
+count_3$Marker[count_3$Marker == 'D2S441'] <- 'N_[D2S441]'
+count_3$Marker[count_3$Marker == 'D12S391'] <- 'O_[D12S391]'
+count_3$Marker[count_3$Marker == 'D19S433'] <- 'P_[D19S433]'
+count_3$Marker[count_3$Marker == 'SE33'] <- 'Q_[SE33]'
+
+#reorder the dataframe
+count_3 <- count_3 %>% arrange(Marker)
+
+#order("AMEL", "D3S1358", "TH01", 'D21S11', 'D18S51', 'D10S1248', 'D1S1656', 'D2S1338', 'D16S539', 'D22S1045', 'vWA', 'D8S1179', 'FGA',
+#      'D2S441', 'D12S391', 'D19S433', 'SE33')
+
+
+#create barplots from all, EZ1 and CWD
+df_counted_alleles <- as.data.frame(count_3)
+
+ggbarplot(df_counted_alleles, x = "Marker", y = "n",
+          label = F, color = "Type",  fill = "Type", ) +
+  geom_text(aes(label = n),position = position_dodge(width = 1), vjust = -0.5, size = 3.5) +
+  facet_grid(rows = vars(Type))
+ggsave("documentation/plots/counted_alleles_barplot.png",
+       width = 20,
+       height = 22,
+       dpi = 150)
+
+correct_alleles_no_NA_by_sample_for_barplots <- correct_alleles_no_NA_by_sample_for_barplots %>% arrange(Marker)
+
+#barplot for correct alleles by sample
+ggbarplot(correct_alleles_no_NA_by_sample_for_barplots, x = "Marker", y = "n",
+          label = F, color = "Type",  fill = "Type", ) +
+  geom_text(aes(label = n),position = position_dodge(width = 1), vjust = -0.5, size = 3.5) +
+  facet_grid(cols = vars(Type))
+
+#save to file
+ggsave("documentation/plots/correct_alleles_barplot.png",
+       width = 20,
+       height = 22,
+       dpi = 150)
+
+#boxplot for correct alleles by Type
+ggboxplot(correct_alleles_no_NA_by_sample, x = "Type", y = "n", 
+          fill = "Type",
+          ylab = "n", xlab = "Type", add = "mean_sd", error.plot = "errorbar")
+
+#save to file
+ggsave("documentation/plots/correct_alleles_boxplot.png",
+       width = 18,
+       height = 12,
+       dpi = 150)
+
+#create table for barplot
+barplot_corrects <- restructured_counted_by_size %>% 
+  unite(Marker_and_value, Marker, value, remove = FALSE) %>% 
+  unite(Type, Extraction_Method, Sampling, remove = FALSE)
+
+#rename Sample Name to Sample
+barplot_corrects <- barplot_corrects %>% 
+  mutate(Sample = str_extract(`Sample Name`, "^.{13}"))
+
+#create copy
+barplot_corrects_sizes <- barplot_corrects
+
+#summarize, replace xx with your alleles
+barplot_corrects_sizes <- barplot_corrects_sizes %>% 
+  group_by(Type, Marker, Sample, Size_bp) %>%
+  summarize(n = (Marker_and_value == 'AMEL_xx' | Marker_and_value == 'AMEL_xx' | Marker_and_value == 'D3S1358_xx' | Marker_and_value == 'D3S1358_xx' | Marker_and_value == 'TH01_xx' | Marker_and_value == 'TH01_xx' | Marker_and_value == 'D21S11_xx' | Marker_and_value == 'D21S11_xx' | Marker_and_value == 'D18S51_xx' | Marker_and_value == 'D18S51_xx' | Marker_and_value == 'D10S1248_xx' | Marker_and_value == 'D1S1656_xx' | Marker_and_value == 'D1S1656_xx' | Marker_and_value == 'D2S1338_xx' | Marker_and_value == 'D2S1338_xx' | Marker_and_value == 'D16S539_xx' | Marker_and_value == 'D16S539_xx' | Marker_and_value == 'D22S1045_xx' | Marker_and_value == 'D22S1045_xx' | Marker_and_value == 'vWA_xx' | Marker_and_value == 'vWA_xx' | Marker_and_value == 'D8S1179_xx' | Marker_and_value == 'D8S1179_xx' | Marker_and_value == 'FGA_xx' | Marker_and_value == 'FGA_xx' | Marker_and_value == 'D2S441_xx' | Marker_and_value == 'D2S441_xx' | Marker_and_value == 'D12S391_xx' | Marker_and_value == 'D12S391_xx' | Marker_and_value == 'D19S433_xx' | Marker_and_value == 'D19S433_xx' | Marker_and_value == 'SE33_xx' | Marker_and_value == 'SE33_xx'))
+
+
+#select required columns for barplot later
+barplot_corrects_sizes <- barplot_corrects_sizes %>%
+  select(Marker, Size_bp, n) %>% 
+  filter(n == T) %>% 
+  group_by(Marker) %>% 
+  arrange(Size_bp)
+
+#find mean, min and max values of correct allele peak heights
+sizes_min_max <- barplot_corrects_sizes %>% 
+  group_by(Marker, Type) %>%
+  summarise(
+    n.count = n(),
+    mean = mean(Size_bp, na.rm = TRUE),
+    min = min(Size_bp, na.rm = TRUE),
+    max = max(Size_bp, na.rm = TRUE))
+  
+#summarize correct alleles
+barplot_corrects <- barplot_corrects %>%
+  group_by(Type, Marker, Sample) %>%
+  summarize(n = sum(Marker_and_value == 'AMEL_xx' | Marker_and_value == 'AMEL_xx' | Marker_and_value == 'D3S1358_xx' | Marker_and_value == 'D3S1358_xx' | Marker_and_value == 'TH01_xx' | Marker_and_value == 'TH01_xx' | Marker_and_value == 'D21S11_xx' | Marker_and_value == 'D21S11_xx' | Marker_and_value == 'D18S51_xx' | Marker_and_value == 'D18S51_xx' | Marker_and_value == 'D10S1248_xx' | Marker_and_value == 'D1S1656_xx' | Marker_and_value == 'D1S1656_xx' | Marker_and_value == 'D2S1338_xx' | Marker_and_value == 'D2S1338_xx' | Marker_and_value == 'D16S539_xx' | Marker_and_value == 'D16S539_xx' | Marker_and_value == 'D22S1045_xx' | Marker_and_value == 'D22S1045_xx' | Marker_and_value == 'vWA_xx' | Marker_and_value == 'vWA_xx' | Marker_and_value == 'D8S1179_xx' | Marker_and_value == 'D8S1179_xx' | Marker_and_value == 'FGA_xx' | Marker_and_value == 'FGA_xx' | Marker_and_value == 'D2S441_xx' | Marker_and_value == 'D2S441_xx' | Marker_and_value == 'D12S391_xx' | Marker_and_value == 'D12S391_xx' | Marker_and_value == 'D19S433_xx' | Marker_and_value == 'D19S433_xx' | Marker_and_value == 'SE33_xx' | Marker_and_value == 'SE33_xx'))
+
+
+  
+#add success percentage
+barplot_corrects <- barplot_corrects %>%
+  group_by(Type, Marker) %>% 
+  mutate(sample_n = n()) %>% 
+  group_by(Type, Marker) %>% 
+  mutate(succ_perc = sum(n)) %>% 
+  mutate(succ_perc = if_else(Marker != 'D10S1248', succ_perc/(sample_n*4)*100, succ_perc/(sample_n*2)*100))
+
+
+  
+  
+  
+#reorder to make it crearer
+order_of_alleles <- as.data.frame(c("Amel", "D10S1248", "D2S441", 
+                                    "D22S1045",
+                                    "D3S1358",
+                                    "D12S391",
+                                    "D1S1656",
+                                    "vWA",
+                                    "TH01",
+                                    "D21S11",
+                                    "D8S1179",
+                                    "D19S411",
+                                    "D2S1338",
+                                    "D16S539",
+                                    "FGA",
+                                    "D18S51",
+                                    "SE33"))
+
+
+
+df_counted_alleles_EZ1 <- df_counted_alleles[!grepl("*CWD", df_counted_alleles$Type),]
+df_counted_alleles_CWD <- df_counted_alleles[!grepl("*EZ1", df_counted_alleles$Type),]
+
+df_correct_alleles_EZ1 <- barplot_corrects[!grepl("*CWD", barplot_corrects$Type),]
+df_correct_alleles_CWD <- barplot_corrects[!grepl("*EZ1", barplot_corrects$Type),]
+
+bars_correct_ez1_perc <- df_correct_alleles_EZ1 %>%
+  select(Type, Marker, succ_perc) %>% 
+  distinct()
+bars_correct_ez1_perc$Marker <- factor(bars_correct_ez1_perc$Marker, levels = c("AMEL", "D10S1248", "D2S441", "D22S1045", "D3S1358", "D12S391", "D1S1656", "vWA", "TH01", "D21S11", "D8S1179", "D19S433", "D2S1338", "D16S539", "FGA", "D18S51", "SE33"))
+
+
+bars_correct_cwd_perc <- df_correct_alleles_CWD %>%
+  select(Type, Marker, succ_perc) %>% 
+  distinct()
+bars_correct_cwd_perc$Marker <- factor(bars_correct_cwd_perc$Marker, levels = c("AMEL", "D10S1248", "D2S441", "D22S1045", "D3S1358", "D12S391", "D1S1656", "vWA", "TH01", "D21S11", "D8S1179", "D19S433", "D2S1338", "D16S539", "FGA", "D18S51", "SE33"))
+
+
+
+
+
+df_correct_alleles_EZ1 <- df_correct_alleles_EZ1 %>% 
+  aggregate(n ~ Type + Marker, FUN=sum)
+df_correct_alleles_EZ1$Marker <- factor(df_correct_alleles_EZ1$Marker, levels = c("AMEL", "D10S1248", "D2S441", "D22S1045", "D3S1358", "D12S391", "D1S1656", "vWA", "TH01", "D21S11", "D8S1179", "D19S433", "D2S1338", "D16S539", "FGA", "D18S51", "SE33"))
+
+
+df_correct_alleles_CWD <- df_correct_alleles_CWD %>% 
+  aggregate(n ~ Type + Marker, FUN=sum)
+df_correct_alleles_CWD$Marker <- factor(df_correct_alleles_CWD$Marker, levels = c("AMEL", "D10S1248", "D2S441", "D22S1045", "D3S1358", "D12S391", "D1S1656", "vWA", "TH01", "D21S11", "D8S1179", "D19S433", "D2S1338", "D16S539", "FGA", "D18S51", "SE33"))
+
+
+
+
+
+#plot number of correct alleles with EZ1
+ggbarplot(df_counted_alleles_EZ1, x = "Marker", y = "n",
+          label = F, color = "Type",  fill = "Type", ) +
+  geom_text(aes(label = n),position = position_dodge(width = 1), vjust = -0.5, size = 4) +
+  facet_grid(rows = vars(Type))
+ggsave("documentation/plots/correct_alleles_barplot_EZ1.png",
+       width = 20,
+       height = 20,
+       dpi = 150)
+
+#plot number of correct alleles with CWD
+ggbarplot(df_counted_alleles_CWD, x = "Marker", y = "n",
+          label = F, color = "Type",  fill = "Type", ) +
+  geom_text(aes(label = n),position = position_dodge(width = 1), vjust = -0.5, size = 4) +
+  facet_grid(rows = vars(Type))
+ggsave("documentation/plots/correct_alleles_barplot_CWD.png",
+       width = 20,
+       height = 20,
+       dpi = 150)
+
+
+
+
+#plot number of correct alleles with EZ1
+bars_correct_ez1 <- ggbarplot(df_correct_alleles_EZ1, x = "Marker", y = "n",
+          label = F, fill = "Type", show.legend = FALSE) +
+  geom_text(aes(label = n),position = position_dodge(width = 1), vjust = -0.5, size = 3.5) +
+  facet_grid(cols = vars(Type))
+bars_correct_ez1 <- bars_correct_ez1+guides(fill = "none")
+
+#plot number of correct alleles with CWD
+bars_correct_cwd <- ggbarplot(df_correct_alleles_CWD, x = "Marker", y = "n",
+          label = F, fill = "Type", show.legend = FALSE) +
+  geom_text(aes(label = n),position = position_dodge(width = 1), vjust = -0.5, size = 3.5) +
+  facet_grid(cols = vars(Type))
+bars_correct_cwd <- bars_correct_cwd+guides(fill = "none")
+
+
+#combine plots to single picture and save to file
+ggarrange(bars_correct_ez1 + labs(x = "Alleelin pituus", y = "Merkkautuneet n")+ theme(axis.title.x = element_text(size = 22))+ theme(axis.title.y = element_text(size = 22)) + rremove("x.text") + theme(strip.text.x = element_text(size = 16)), bars_correct_cwd  + labs(x = "Alleelin pituus", y = "Merkkautuneet n")+ theme(axis.title.x = element_text(size = 22))+ theme(axis.title.y = element_text(size = 22)) + rremove("x.text") + theme(strip.text.x = element_text(size = 16)), 
+          labels = c("a", "b"),
+          font.label = list(size=22),
+          ncol = 1, nrow = 2) 
+ggsave("documentation/plots/correct_alleles_n_barplot.png",
+       width = 13,
+       height = 10,
+       dpi = 150)
+
+
+#set the theme
+theme_set(theme_gray(base_size = 19))
+
+
+#barplot for correct allele success percentage with EZ1
+bars_correct_ez1_perc <- ggbarplot(bars_correct_ez1_perc, x = "Marker", y = "succ_perc",
+                              label = F, fill = "Type") +
+  scale_fill_manual(values = c("EZ1_NaCl_Copan"="turquoise", "EZ1_Cotton_Swab_H2O"="orchid1", "EZ1_BT_Mix_Copan"="yellow2" ))+
+  geom_text(aes(label = round(succ_perc,1)), position = position_dodge(width = 1), vjust = -0.5, size = 5) +
+  facet_grid(~factor(Type, levels = c("EZ1_NaCl_Copan", "EZ1_Cotton_Swab_H2O", "EZ1_BT_Mix_Copan")))+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, size = 18))
+
+bars_correct_ez1_perc <- bars_correct_ez1_perc+guides(fill = "none")
+
+#barplot for correct allele success percentage with CWD
+bars_correct_cwd_perc <- ggbarplot(bars_correct_cwd_perc, x = "Marker", y = "succ_perc",
+                              label = F, fill = "Type")+
+  scale_fill_manual(values = c("CWD_NaCl_Copan"="lightgreen", "CWD_Cotton_Swab_H2O"="lightslateblue", "CWD_BT_Mix_Copan"="coral" ))+
+  geom_text(aes(label = round(succ_perc, 1)), position = position_dodge(width = 1), vjust = -0.5, size = 5) +
+  facet_grid(~factor(Type, levels = c("CWD_NaCl_Copan", "CWD_Cotton_Swab_H2O", "CWD_BT_Mix_Copan")))+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, size = 18))
+
+bars_correct_cwd_perc <- bars_correct_cwd_perc+guides(fill = "none")
+
+#set the theme
+theme_set(theme_gray(base_size = 19))
+
+#combine plots to one picture and save to file
+ggarrange(bars_correct_ez1_perc + labs(x = "Markkeri", y = "Onnistumisprosentti")+ theme(axis.title.x = element_text(size = 25))+ theme(axis.title.y = element_text(size = 25)) + theme(strip.text.x = element_text(size = 25))
+, bars_correct_cwd_perc  + labs(x = "Markkeri", y = "Onnistumisprosentti")+ theme(axis.title.x = element_text(size = 25))+ theme(axis.title.y = element_text(size = 25))+ theme(strip.text.x = element_text(size = 25))
+, 
+          labels = c("a", "b"),
+          font.label = list(size=22),
+          ncol = 1, nrow = 2)
+ggsave("documentation/plots/correct_alleles_n_barplot_perc.png",
+       width = 21,
+       height = 13,
+       dpi = 150)
+
+#set the theme
+theme_set(theme_gray(base_size = 17))
+
+#create tables for testing
+correct_alleles_counted <- correct_alleles_counted %>% 
+  mutate(Extraction_Method = "")
+
+correct_alleles_counted_EZ1 <- correct_alleles_counted[!grepl("*CWD", correct_alleles_counted$Type),]
+correct_alleles_counted_EZ1 <- correct_alleles_counted_EZ1 %>% 
+  mutate(Extraction_Method = "EZ1")
+
+  
+correct_alleles_counted_CWD <- correct_alleles_counted[!grepl("*EZ1", correct_alleles_counted$Type),]
+correct_alleles_counted_CWD <- correct_alleles_counted_CWD %>% 
+  mutate(Extraction_Method = "CWD")
+
+#join the counted alleles to one table
+correct_alleles_counted <- full_join(correct_alleles_counted_CWD, correct_alleles_counted_EZ1)
+
+#test for normality and homogeneity of variables
+shapiro.test(correct_alleles_counted$n)
+leveneTest(n ~ Type*Extraction_Method, data=correct_alleles_counted)
+
+
+#run pairwise wilcox test for correct allels with different variables
+pairwise_wilcox_correct_alleles <- pairwise.wilcox.test(correct_alleles_counted$n, correct_alleles_counted$Type,
+                                                      p.adjust.method = "BH", exact = FALSE, paired = FALSE)
+pairwise_wilcox_correct_alleles
+
+
+
+pairwise_wilcox_correct_alleles_extraction_method <- pairwise.wilcox.test(correct_alleles_counted$n, correct_alleles_counted$Extraction_Method,
+                                                                  p.adjust.method = "BH", exact = FALSE, paired = FALSE)
+pairwise_wilcox_correct_alleles_extraction_method
+
+
+kruskal_counted_correct_combo <- kruskal.test(n ~ Type, data = correct_alleles_counted)
+
+kruskal_counted_correct_extraction_method <- kruskal.test(n ~ Extraction_Method, data = correct_alleles_counted)
+
+
+#save results to text file
+sink(file = "documentation/pairwise_correct_alleles_results.txt")
+pairwise_wilcox_correct_alleles
+pairwise_wilcox_correct_alleles_extraction_method
+kruskal_counted_correct_combo
+kruskal_counted_correct_extraction_method
+shapiro.test(correct_alleles_counted$n)
+sink(file = NULL)
+
+
+
+
+#add KW test results to list
+results2 <- results2 |>
+  add_stats(kruskal_counted_correct_combo)|>
+  add_stats(kruskal_counted_correct_extraction_method)
+
+
+#write KW test and wilcox test results to file
+#set directory and write results to .json file
+dir <- "C:\\path\\to\\file\\documentation\\results"
+write_stats(results2, file.path(dir, "results_kruskal.json"))
+
+
+#set directory and write results to .json file
+dir <- "C:\\path\\to\\file\\documentation\\results"
+write_stats(results, file.path(dir, "results_wilcox.json"))
+
+#filter allels, replace xx with the value of your alleles
+correct_alleles_conf <- machine_count_alleles %>% 
+  filter(machine_count_alleles$Marker_and_value == 'AMEL_xx' | machine_count_alleles$Marker_and_value == 'AMEL_xx' | machine_count_alleles$Marker_and_value == 'D3S1358_xx' | machine_count_alleles$Marker_and_value == 'D3S1358_xx' | machine_count_alleles$Marker_and_value == 'TH01_xx' | machine_count_alleles$Marker_and_value == 'TH01_xx' | machine_count_alleles$Marker_and_value == 'D21S11_xx' | machine_count_alleles$Marker_and_value == 'D21S11_xx' | machine_count_alleles$Marker_and_value == 'D18S51_xx' | machine_count_alleles$Marker_and_value == 'D18S51_xx'
+         | machine_count_alleles$Marker_and_value == 'D10S1248_xx' | machine_count_alleles$Marker_and_value == 'D1S1656_xx' | machine_count_alleles$Marker_and_value == 'D1S1656_xx' | machine_count_alleles$Marker_and_value == 'D2S1338_xx' | machine_count_alleles$Marker_and_value == 'D2S1338_xx' | machine_count_alleles$Marker_and_value == 'D16S539_xx' | machine_count_alleles$Marker_and_value == 'D16S539_xx'
+         | machine_count_alleles$Marker_and_value == 'D22S1045_xx' | machine_count_alleles$Marker_and_value == 'D22S1045_xx' | machine_count_alleles$Marker_and_value == 'vWA_xx' | machine_count_alleles$Marker_and_value == 'vWA_xx' | machine_count_alleles$Marker_and_value == 'D8S1179_xx' | machine_count_alleles$Marker_and_value == 'D8S1179_xx' | machine_count_alleles$Marker_and_value == 'FGA_xx' | machine_count_alleles$Marker_and_value == 'FGA_xx'
+         | machine_count_alleles$Marker_and_value == 'D2S441_xx' | machine_count_alleles$Marker_and_value == 'D2S441_xx' | machine_count_alleles$Marker_and_value == 'D12S391_xx' | machine_count_alleles$Marker_and_value == 'D12S391_xx' | machine_count_alleles$Marker_and_value == 'D19S433_xx' | machine_count_alleles$Marker_and_value == 'D19S433_xx' | machine_count_alleles$Marker_and_value == 'SE33_xx' | machine_count_alleles$Marker_and_value == 'SE33_xx') %>% 
+  count(Type, Marker_and_value, Marker, value) %>%
+  aggregate(n ~ Type + Marker, FUN=sum)
+
+all_alleles_conf <- machine_count_alleles %>% 
+  count(Type, Marker_and_value, Marker, value) %>% 
+  aggregate(n ~ Type + Marker, FUN=sum)
+
+#filter alleles for possible poisson testing
+correct_alleles_for_poisson <- machine_count_for_poisson %>% 
+  filter(machine_count_for_poisson$Marker_and_value == 'AMEL_xx' | machine_count_for_poisson$Marker_and_value == 'AMEL_xx' | machine_count_for_poisson$Marker_and_value == 'D3S1358_xx' | machine_count_for_poisson$Marker_and_value == 'D3S1358_xx' | machine_count_for_poisson$Marker_and_value == 'TH01_xx' | machine_count_for_poisson$Marker_and_value == 'TH01_xx' | machine_count_for_poisson$Marker_and_value == 'D21S11_xx' | machine_count_for_poisson$Marker_and_value == 'D21S11_xx' | machine_count_for_poisson$Marker_and_value == 'D18S51_xx' | machine_count_for_poisson$Marker_and_value == 'D18S51_xx'
+         | machine_count_for_poisson$Marker_and_value == 'D10S1248_xx' | machine_count_for_poisson$Marker_and_value == 'D1S1656_xx' | machine_count_for_poisson$Marker_and_value == 'D1S1656_xx' | machine_count_for_poisson$Marker_and_value == 'D2S1338_xx' | machine_count_for_poisson$Marker_and_value == 'D2S1338_xx' | machine_count_for_poisson$Marker_and_value == 'D16S539_xx' | machine_count_for_poisson$Marker_and_value == 'D16S539_xx'
+         | machine_count_for_poisson$Marker_and_value == 'D22S1045_xx' | machine_count_for_poisson$Marker_and_value == 'D22S1045_xx' | machine_count_for_poisson$Marker_and_value == 'vWA_xx' | machine_count_for_poisson$Marker_and_value == 'vWA_xx' | machine_count_for_poisson$Marker_and_value == 'D8S1179_xx' | machine_count_for_poisson$Marker_and_value == 'D8S1179_xx' | machine_count_for_poisson$Marker_and_value == 'FGA_xx' | machine_count_for_poisson$Marker_and_value == 'FGA_xx'
+         | machine_count_for_poisson$Marker_and_value == 'D2S441_xx' | machine_count_for_poisson$Marker_and_value == 'D2S441_xx' | machine_count_for_poisson$Marker_and_value == 'D12S391_xx' | machine_count_for_poisson$Marker_and_value == 'D12S391_xx' | machine_count_for_poisson$Marker_and_value == 'D19S433_xx' | machine_count_for_poisson$Marker_and_value == 'D19S433_xx' | machine_count_for_poisson$Marker_and_value == 'SE33_xx' | machine_count_for_poisson$Marker_and_value == 'SE33_xx') %>% 
+  count(Type, Marker_and_value, Marker, Sample, value, Extraction_Method, Sampling) %>%
+  aggregate(n ~ Type + Marker + Sampling + Extraction_Method, FUN=sum)
+
+
+#save to text file
+sink(file = "documentation/poisson_all_and_correct.txt")
+
+sd_mean_all <- group_by(all_alleles_conf, Type) %>%
+  summarise(
+    n.count = n(),
+    sum=sum(n,na.rm=TRUE),
+    mean = mean(n, na.rm = TRUE),
+    median = median(n, na.rm = TRUE),
+    sd = sd(n, na.rm = TRUE),
+    min = min(n, na.rm = TRUE),
+    max = max(n, na.rm = TRUE)) %>% 
+  mutate(se = sd / sqrt(n.count),
+    lower.ci = mean - qt(1 - (0.05 / 2), n.count - 1) * se,
+    upper.ci = mean + qt(1 - (0.05 / 2), n.count - 1) * se)
+sd_mean_all
+
+sd_mean_correct <- group_by(correct_alleles_conf, Type) %>%
+  summarise(
+    n.count = n(),
+    sum=sum(n,na.rm=TRUE),
+    mean = mean(n, na.rm = TRUE),
+    median = median(n, na.rm = TRUE),
+    sd = sd(n, na.rm = TRUE),
+    min = min(n, na.rm = TRUE),
+    max = max(n, na.rm = TRUE)) %>% 
+  mutate(se = sd / sqrt(n.count),
+    lower.ci = mean - qt(1 - (0.05 / 2), n.count - 1) * se,
+    upper.ci = mean + qt(1 - (0.05 / 2), n.count - 1) * se)
+sd_mean_correct
